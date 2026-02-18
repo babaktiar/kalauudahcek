@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kalauudahcek - Ramadhan</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0F5132">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3655/3655584.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0F5132', 
+                        accent: '#D4AF37',
+                        bg: '#F3F4F6'
+                    },
+                    fontFamily: { sans: ['Segoe UI', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* CSS Tambahan untuk Animasi */
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        
+        /* Hilangkan highlight biru saat tap di Android */
+        * { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-bg text-gray-800 antialiased select-none">
+
+    <div id="app" class="min-h-screen relative pb-safe">
+        
+        <transition name="fade">
+            <div v-if="currentScreen === 'loading'" class="fixed inset-0 bg-primary flex flex-col items-center justify-center text-white z-50">
+                <h1 class="text-3xl font-bold mb-2 tracking-tight">Kalauudahcek</h1>
+                <p class="text-sm opacity-80">Edisi Ramadhan 1447H</p>
+                <div class="mt-6 w-10 h-10 border-4 border-white/30 border-t-accent rounded-full animate-spin"></div>
+            </div>
+        </transition>
+
+        <transition name="fade">
+            <div v-if="currentScreen === 'onboarding'" class="fixed inset-0 bg-white z-40 flex flex-col items-center justify-center p-6 text-center">
+                <div class="flex-1 flex flex-col justify-center items-center space-y-6">
+                    <div class="text-6xl animate-bounce">{{ slides[slideIndex-1].icon }}</div>
+                    <h2 class="text-2xl font-bold text-primary">{{ slides[slideIndex-1].title }}</h2>
+                    <p class="text-gray-600 px-4">{{ slides[slideIndex-1].desc }}</p>
+                </div>
+
+                <div class="w-full mb-8">
+                    <button @click="nextSlide" class="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform">
+                        {{ slideIndex < 3 ? 'Lanjut' : 'Mulai Bismillah!' }}
+                    </button>
+                    <div class="flex justify-center gap-2 mt-4">
+                        <span v-for="n in 3" :class="['w-2 h-2 rounded-full', n === slideIndex ? 'bg-primary' : 'bg-gray-300']"></span>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <div v-if="currentScreen === 'app'" class="pb-24">
+            <header class="fixed top-0 left-0 w-full bg-primary text-white p-4 pt-4 shadow-lg z-30 rounded-b-2xl">
+                <div class="flex justify-between items-end mb-3">
+                    <div>
+                        <p class="text-xs opacity-80">Assalamu'alaikum,</p>
+                        <h3 class="font-bold text-lg">Target Hari Ini</h3>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-bold">{{ progressPercentage }}%</span>
+                        <p class="text-[10px] opacity-70">Progress Juz 1</p>
+                    </div>
+                </div>
+                <div class="w-full bg-black/20 h-3 rounded-full overflow-hidden backdrop-blur-sm">
+                    <div class="h-full bg-accent transition-all duration-700 ease-out shadow-[0_0_10px_rgba(212,175,55,0.7)]" :style="{ width: progressPercentage + '%' }"></div>
+                </div>
+            </header>
+
+            <main class="mt-32 px-4 space-y-3 max-w-md mx-auto">
+                <div 
+                    v-for="(item, index) in quranData" 
+                    :key="item.id"
+                    @click="toggleCheck(item)"
+                    :class="[
+                        'p-4 rounded-xl shadow-sm border transition-all duration-200 flex items-center gap-4 cursor-pointer active:scale-95',
+                        isChecked(item.id) ? 'bg-green-50 border-primary border-l-4' : 'bg-white border-transparent'
+                    ]"
+                >
+                    <div :class="[
+                        'w-7 h-7 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+                        isChecked(item.id) ? 'bg-primary border-primary' : 'border-gray-300'
+                    ]">
+                        <span v-if="isChecked(item.id)" class="text-white text-xs font-bold">✓</span>
+                    </div>
+
+                    <div class="flex-1">
+                        <h4 class="font-bold text-gray-800 text-sm">{{ item.surah }} <span class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-[10px] ml-1">Ruku {{ item.ruku }}</span></h4>
+                        <div class="flex justify-between items-center mt-1">
+                            <p class="text-xs text-gray-500">Hal {{ item.page }} • Ayat {{ item.ayat_start }}-{{ item.ayat_end }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center text-xs text-gray-400 py-8">
+                    <p>Scroll terus ke bawah...</p>
+                    <p class="mt-1">Dibuat dengan ❤️ oleh Babaktiar</p>
+                </div>
+            </main>
+        </div>
+
+        <transition name="fade">
+            <div v-if="showModal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6 backdrop-blur-sm" @click.self="showModal = false">
+                <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl animate-[bounce_0.5s_ease-out]">
+                    <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">
+                        🎉
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">Alhamdulillah!</h2>
+                    <p class="text-gray-500 text-sm mt-1">Satu ruku' telah selesai dibaca.</p>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 my-5 relative">
+                        <span class="absolute -top-2 left-4 bg-yellow-200 text-[10px] px-2 py-0.5 rounded font-bold text-yellow-800">INSIGHT</span>
+                        <p class="text-sm italic text-gray-700 leading-relaxed">"{{ activeInsight }}"</p>
+                    </div>
+
+                    <button @click="showModal = false" class="w-full py-3 rounded-xl bg-gray-100 text-gray-600 font-semibold hover:bg-gray-200 active:bg-gray-300">
+                        Tutup & Lanjut
+                    </button>
+                </div>
+            </div>
+        </transition>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const currentScreen = ref('loading');
+                const slideIndex = ref(1);
+                const showModal = ref(false);
+                const activeInsight = ref('');
+                const checkedItems = ref([]);
+
+                // Data Onboarding
+                const slides = [
+                    { icon: '📖', title: 'Target Khatam?', desc: 'Bingung tracking bacaan Qur\'an? Kami bantu catat progresmu per ruku\'.' },
+                    { icon: '⚡', title: 'Ringan & Fokus', desc: 'Target kecil (per Ruku\') terasa lebih ringan daripada target 1 Juz langsung.' },
+                    { icon: '🕌', title: 'Edisi Ramadhan', desc: 'Mari maksimalkan bulan suci ini dengan bacaan yang terjaga.' }
+                ];
+
+                // Data Quran (Sample Juz 1)
+                const quranData = ref([
+                    { id: 1, surah: "Al-Fatihah", ruku: 1, ayat_start: 1, ayat_end: 7, page: 1, insight: "Opening ceremony! Inti doa kita ada di sini: minta jalan yang lurus." },
+                    { id: 2, surah: "Al-Baqarah", ruku: 1, ayat_start: 1, ayat_end: 7, page: 2, insight: "Kitab ini tidak ada keraguan di dalamnya. Petunjuk bagi orang bertaqwa." },
+                    { id: 3, surah: "Al-Baqarah", ruku: 2, ayat_start: 8, ayat_end: 20, page: 3, insight: "Waspada ciri orang munafik! Lain di mulut, lain di hati." },
+                    { id: 4, surah: "Al-Baqarah", ruku: 3, ayat_start: 21, ayat_end: 29, page: 4, insight: "Tantangan buat yang ragu: coba bikin satu surat aja yang mirip Al-Quran!" },
+                    { id: 5, surah: "Al-Baqarah", ruku: 4, ayat_start: 30, ayat_end: 39, page: 6, insight: "Kisah Nabi Adam AS dan Hawa. Awal mula manusia turun ke bumi." },
+                    { id: 6, surah: "Al-Baqarah", ruku: 5, ayat_start: 40, ayat_end: 48, page: 7, insight: "Ingatlah nikmat Allah. Jangan campur adukkan kebenaran dengan kebatilan." },
+                    { id: 7, surah: "Al-Baqarah", ruku: 6, ayat_start: 49, ayat_end: 59, page: 8, insight: "Drama laut terbelah! Bani Israil selamat, Firaun tenggelam." }
+                ]);
+
+                onMounted(() => {
+                    const savedChecks = localStorage.getItem('checkedItems');
+                    if (savedChecks) checkedItems.value = JSON.parse(savedChecks);
+
+                    setTimeout(() => {
+                        const hasSeenIntro = localStorage.getItem('hasSeenIntro');
+                        currentScreen.value = hasSeenIntro ? 'app' : 'onboarding';
+                    }, 2000);
+                });
+
+                const nextSlide = () => {
+                    if (slideIndex.value < 3) slideIndex.value++;
+                    else {
+                        localStorage.setItem('hasSeenIntro', 'true');
+                        currentScreen.value = 'app';
+                    }
+                };
+
+                const toggleCheck = (item) => {
+                    if (checkedItems.value.includes(item.id)) {
+                        checkedItems.value = checkedItems.value.filter(id => id !== item.id);
+                    } else {
+                        checkedItems.value.push(item.id);
+                        activeInsight.value = item.insight;
+                        showModal.value = true;
+                    }
+                    localStorage.setItem('checkedItems', JSON.stringify(checkedItems.value));
+                };
+
+                const isChecked = (id) => checkedItems.value.includes(id);
+
+                const progressPercentage = computed(() => {
+                    if (quranData.value.length === 0) return 0;
+                    return Math.round((checkedItems.value.length / quranData.value.length) * 100);
+                });
+
+                return { currentScreen, slideIndex, slides, showModal, activeInsight, quranData, checkedItems, progressPercentage, nextSlide, toggleCheck, isChecked };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
